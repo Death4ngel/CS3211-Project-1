@@ -1,0 +1,23 @@
+﻿#define N 1;
+
+ATM(x)			=	authenticateCard.x -> AtmToCloud(x)
+				[]	withdraw.x -> AtmToCloud(x)
+				[]	deposit.x -> AtmToCloud(x);
+AtmToCloud(x)	=	atmSendCloud.x -> (atmToCloudTimeout.x -> AtmToCloud(x) [] atmReceivesCloud.x -> ATM(x));
+Cloud(x)		=	cloudReceivesAtm.x -> CloudToDb(x);
+CloudToDb(x)	=	cloudSendDb.x -> (cloudToDbTimeout.x -> CloudToDb(x) [] cloudReceivesDb.x -> CloudToAtm(x));
+CloudToAtm(x)	=	cloudSendAtm.x -> (cloudtoAtmTimeout.x -> CloudToAtm(x) [] Cloud(x));
+DB(x)			=	dbReceivesCloud.x -> retrieve.x -> update.x -> DbSub(x);
+DbSub(x)		=	dbSendCloud.x -> (dbToCloudTimeout.x -> DbSub(x) [] DB(x));
+
+Channel(x)		=	atmSendCloud.x -> (atmToCloudTimeout.x -> Channel(x) [] cloudReceivesAtm.x -> Channel(x))
+				[]	cloudSendDb.x -> (cloudToDbTimeout.x -> Channel(x) [] dbReceivesCloud.x -> Channel(x))
+				[]	dbSendCloud.x -> (dbToCloudTimeout.x -> Channel(x) [] cloudReceivesDb.x -> Channel(x))
+				[]	cloudSendAtm.x -> (cloudtoAtmTimeout.x -> Channel(x) [] atmReceivesCloud.x -> Channel(x));
+
+ATMs()			=	|| x:{0..N-1}@ATM(x);
+Channels()		=	|| x:{0..N-1}@Channel(x);
+Clouds()		=	|| x:{0..N-1}@Cloud(x);
+Database()		=	[] x:{0..N-1}@DB(x);
+
+System()		=	ATMs() || Clouds() || Database() || Channels();
