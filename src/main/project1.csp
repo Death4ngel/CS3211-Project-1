@@ -1,14 +1,17 @@
 ﻿#define N 1;
 
-ATM(x)			=	authenticateCard.x -> AtmToCloud(x)
-				[]	withdraw.x -> AtmToCloud(x)
+ATM(x)			=	authenticateCard.x -> AtmToCloud(x);
+AuthAtm(x)		=	withdraw.x -> AtmToCloud(x)
 				[]	deposit.x -> AtmToCloud(x);
-AtmToCloud(x)	=	atmSendCloud.x -> (atmToCloudTimeout.x -> AtmToCloud(x) [] atmReceivesCloud.x -> ATM(x));
+AtmToCloud(x)	=	atmSendCloud.x -> (atmToCloudTimeout.x -> AtmToCloud(x) [] atmReceivesCloud.x -> (authFail -> ATM(x) [] authPass -> AuthAtm(x)));
 Cloud(x)		=	cloudReceivesAtm.x -> CloudToDb(x);
-CloudToDb(x)	=	cloudSendDb.x -> (cloudToDbTimeout.x -> CloudToDb(x) [] cloudReceivesDb.x -> CloudToAtm(x));
+CloudToDb(x)	=	cloudSendDb.x	->	(cloudToDbTimeout.x -> CloudToDb(x)
+									[]	cloudReceivesDb.x -> (process -> CloudToDb(x) [] CloudToAtm(x)));
 CloudToAtm(x)	=	cloudSendAtm.x -> (cloudtoAtmTimeout.x -> CloudToAtm(x) [] Cloud(x));
-DB(x)			=	dbReceivesCloud.x -> retrieve.x -> update.x -> DbSub(x);
-DbSub(x)		=	dbSendCloud.x -> (dbToCloudTimeout.x -> DbSub(x) [] DB(x));
+DB(x)			=	dbReceivesCloud.x -> retrieve.x -> DbToCloud(x);
+DbToCloud(x)	=	dbSendCloud.x	->	(dbToCloudTimeout.x -> DbToCloud(x)
+									[]	dbReceivesCloud.x -> update.x -> DbToCloud(x)
+									[]	DB(x));
 
 Channel(x)		=	atmSendCloud.x -> (atmToCloudTimeout.x -> Channel(x) [] cloudReceivesAtm.x -> Channel(x))
 				[]	cloudSendDb.x -> (cloudToDbTimeout.x -> Channel(x) [] dbReceivesCloud.x -> Channel(x))
