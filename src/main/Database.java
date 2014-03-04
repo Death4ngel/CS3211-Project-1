@@ -10,15 +10,25 @@ public class Database implements Runnable {
 	}
 
 	@Override
-	public synchronized void run() {
+	public void run() {
 		while (true) {
 			try {
-				wait(); // for something to do
-				Cloud cloud = queue.poll();
-				System.out.println("Retrieve");
-				cloud.notify();
-				wait(); // wait for cloud
+				Cloud cloud = null;
+				synchronized (this) {
+					wait(); // for something to do
+					cloud = queue.poll();
+					System.out.println("Retrieve");
+				}
+				synchronized (cloud) {
+					cloud.notify();
+				}
+				synchronized (this) {
+					wait(); // wait for cloud
+				}
 				System.out.println("Update");
+				synchronized (cloud) {
+					cloud.notify();
+				}
 			} catch (InterruptedException e) {
 
 			}

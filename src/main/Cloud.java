@@ -1,6 +1,9 @@
 public class Cloud implements Runnable {
 	private Atm atm;
 	private static Database database = new Database();
+	{
+		new Thread(database).start();
+	}
 
 	private Cloud(Atm atm) {
 		this.atm = atm;
@@ -11,16 +14,24 @@ public class Cloud implements Runnable {
 	}
 
 	@Override
-	public synchronized void run() {
+	public void run() {
 		while (true) {
 			try {
-				wait(); // for atm
-				database.doSomething(this);
-				wait(); // for database
-				System.out.println("Processing");
-				database.notify();
-				wait(); // for database
-				atm.notify();
+				synchronized (this) {
+					wait(); // for atm
+					database.doSomething(this);
+					wait(); // for database
+					System.out.println("Processing");
+				}
+				synchronized (database) {
+					database.notify();
+				}
+				synchronized (this) {
+					wait(); // for database
+				}
+				synchronized (atm) {
+					atm.notify();
+				}
 			} catch (InterruptedException e) {
 
 			}
