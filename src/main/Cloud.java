@@ -1,5 +1,9 @@
-public class Cloud implements Runnable {
+ public class Cloud implements Runnable {
 	private Atm atm;
+	private boolean receivedAtm;
+	private boolean receivedDb;
+	private boolean accountId;
+	private Command command;
 	private static Database database = new Database();
 	{
 		new Thread(database).start();
@@ -10,7 +14,9 @@ public class Cloud implements Runnable {
 	}
 
 	public static Cloud allocateCloud(Atm atm) {
-		return new Cloud(atm);
+		Cloud cloud = new Cloud(atm);
+		new Thread(cloud).start();
+		return cloud;
 	}
 
 	@Override
@@ -18,16 +24,41 @@ public class Cloud implements Runnable {
 		while (true) {
 			try {
 				synchronized (this) {
-					wait(); // for atm
+					while (!receivedAtm) {
+						wait(Channel.timeout); // for atm
+					}
+					receivedAtm = false;
+					Action action = atm.getAction();
+					command = action.getCommand();					
 					database.doSomething(this);
-					wait(); // for database
+					while (!receivedDb) {
+						wait(Channel.timeout); // for database
+					}
+					receivedDb = false;
+					int balance = database.getBalance();
+					switch (action.getCommand()) {
+						withdraw:
+							balance -= action.getAmount();
+							break;
+						deposit:
+							balance += action.getAmount();
+							break;
+						authenticate:
+							accountId = atm.getAccountId();
+							break;
+						transfer:
+							accountId = atm.getAccountId();
+							break;
+					}
 					System.out.println("Processing");
 				}
 				synchronized (database) {
 					database.notify();
 				}
 				synchronized (this) {
-					wait(); // for database
+					while (!receivedDb) {
+						wait(Channel.timeout); // for database
+					}
 				}
 				synchronized (atm) {
 					atm.notify();
