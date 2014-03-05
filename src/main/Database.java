@@ -1,31 +1,46 @@
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 
 public class Database implements Runnable {
-	public Queue<Cloud> queue = new LinkedList<Cloud>();
+	private Queue<Query> queries = new LinkedList<Query>();
+	private Map<Integer, BankAccount> results = new HashMap<Integer, BankAccount>();
+	private Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
 
-	public synchronized void doSomething(Cloud cloud) {
-		queue.add(cloud);
+	public synchronized void query(Query query) {
+		queries.add(query);
 		notify(); // run
+	}
+
+	public synchronized BankAccount retrieveResult(int id) {
+		return results.get(id);
 	}
 
 	@Override
 	public void run() {
 		while (true) {
 			try {
-				Cloud cloud = null;
+				int cloudId = -1;
 				synchronized (this) {
-					wait(); // for something to do
-					cloud = queue.poll();
-					System.out.println("Retrieve");
+					while (queries.isEmpty()) {
+						wait(); // for something to do
+					}
+					Query query = queries.poll();
+					int accountId = query.getAccountId();
+					switch (query.getCommand()) {
+					case retrieve:
+						cloudId = query.getCloudId();
+						results.put(cloudId, bankAccounts.get(accountId));
+						break;
+					case update:
+						bankAccounts.put(accountId, query.getBankAccount());
+						break;
+					default:
+						System.err.println("Command not valid");
+					}
 				}
-				synchronized (cloud) {
-					cloud.notify();
-				}
-				synchronized (this) {
-					wait(); // wait for cloud
-				}
-				System.out.println("Update");
+				Cloud cloud = Cloud.getCloud(cloudId);
 				synchronized (cloud) {
 					cloud.notify();
 				}

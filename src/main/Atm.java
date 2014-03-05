@@ -1,16 +1,17 @@
 public class Atm implements Runnable {
-
-	public enum Command { deposit, withdraw, transfer, authenticate }
-
 	private Cloud cloud;
 	private boolean received;
 	private Action action;
 
-	public void do(Action action) {
+	public void doAction(Action action) {
 		this.action = action;
 		synchronized (this) {
 			notify();
 		}
+	}
+
+	public Action getAction() {
+		return action;
 	}
 
 	@Override
@@ -19,26 +20,24 @@ public class Atm implements Runnable {
 		while (true) {
 			try {
 				synchronized (this) {
-					while (!received) {
-						wait(Channel.timeout); // for an action
+					while (action != null) {
+						wait(); // for an action
 					}
-					received = false;
-				}				
-				synchronized (cloud) {
-					cloud.notify();
+					action = null;
 				}
-				synchronized (this) {
-					while (!received) {
+				while (!received) {
+					synchronized (cloud) {
+						cloud.notify();
+					}
+					synchronized (this) {
 						wait(Channel.timeout); // for cloud
 					}
-					received = false;
 				}
-
+				
 				System.out.println("Completed transanction");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
 	}
-
 }
