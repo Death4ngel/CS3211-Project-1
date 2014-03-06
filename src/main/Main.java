@@ -27,13 +27,29 @@ public class Main {
   System.out.println("Please enter your PIN number: ");
   pin_number = input.nextInt();
   //Check authentication
+  atm.doAction(new Action(accountID, Command.authenticate, pin_number));
   //if authPass
   do {
   System.out.println("Please select your transaction: ");
   System.out.println("[1]Withdrawal [2]Deposit [3]Transfer [4] Run Tests");
   trans = input.nextInt();
+  switch(trans) {
+    case 1:
+      System.out.println("Withdraw amount: ");
+      int amount = input.nextInt();
+      atm.doAction(new Action(accountID, Command.withdraw, amount));
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+    case 4:
+      break;
+    default:
+      break;
+  }
   if (trans == 1) {
-   atm.doAction(new Action(accountID, Command.withdraw));
+   
   }
   //System.out.println("Please enter the amount of withdrawal: ");
   //if trans == 2, execute deposit

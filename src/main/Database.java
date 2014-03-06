@@ -10,7 +10,7 @@ public class Database implements Runnable {
  
  public void initWithTestData() {
    for(int i=10001; i<10023; i++) {
-     bankAccounts.put(i, new BankAccount(i, "thisisapw"+i, i));
+     bankAccounts.put(i, new BankAccount(i, 2*i, i));
    }
  }
 

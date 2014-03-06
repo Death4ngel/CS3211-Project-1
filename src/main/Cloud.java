@@ -12,6 +12,7 @@ public class Cloud implements Runnable {
  private Action action;
  private Command command;
  private static List<Cloud> clouds = new ArrayList<Cloud>();
+ 
  private static Database database = new Database();
  {
   database.initWithTestData();
@@ -36,6 +37,14 @@ public class Cloud implements Runnable {
 
  public Action getAction() {
   return action;
+ }
+ 
+ public boolean getAuthStatus() {
+   return this.isAuthenticated;
+ }
+ 
+ public int getBalance() {
+   return this.balance;
  }
 
  @Override
