@@ -42,14 +42,16 @@ public class Atm implements Runnable {
       cloud.notify(); //notify cloud to get Action
      }
      synchronized (this) {
+      System.out.println("ATM waiting for cloud.. ");
       wait(Channel.timeout); // for cloud to notify of result
      }
     }
     //output messages based on choice of action.
+    System.out.println("Cloud notified");
     switch(this.getAction().getCommand()) {
       case authenticate:
         System.out.println("Auth status received");
-        
+        authenticated = cloud.getAuthStatus();
         break;
       default:
         System.out.println("Lol");
