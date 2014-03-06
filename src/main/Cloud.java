@@ -46,6 +46,10 @@ public class Cloud implements Runnable {
  public int getBalance() {
    return this.balance;
  }
+ 
+ public int getCloudId() {
+   return this.cloudId;
+ }
 
  @Override
  public void run() {

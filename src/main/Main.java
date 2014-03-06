@@ -14,50 +14,63 @@ public class Main {
    */
   /*Atm atm = new Atm();
   new Thread(atm).start();*/
- }
-
- public static void main(String[] args) {
-  Scanner input = new Scanner(System.in);
-  Main system = new Main();
+   Scanner input = new Scanner(System.in);
   //system.run();
-  Atm atm = new Atm();
+  Atm atm = new Atm(this);
   new Thread(atm).start();
   System.out.println("Please insert your card: ");
   accountID = input.nextInt();
   System.out.println("Please enter your PIN number: ");
   pin_number = input.nextInt();
   //Check authentication
-  atm.doAction(new Action(accountID, Command.authenticate, pin_number));
-  //if authPass
-  do {
-  System.out.println("Please select your transaction: ");
-  System.out.println("[1]Withdrawal [2]Deposit [3]Transfer [4] Run Tests");
-  trans = input.nextInt();
-  switch(trans) {
-    case 1:
-      System.out.println("Withdraw amount: ");
-      int amount = input.nextInt();
-      atm.doAction(new Action(accountID, Command.withdraw, amount));
-      break;
-    case 2:
-      break;
-    case 3:
-      break;
-    case 4:
-      break;
-    default:
-      break;
+  System.out.println("Authenticating.. ");
+  try {
+    synchronized(this) {
+      atm.doAction(new Action(accountID, Command.authenticate, pin_number));
+      this.wait(4000);//wait for atm 
+      System.out.println("Please wait.. ");
+    }
+  } catch (InterruptedException ex) {
+    ex.printStackTrace();
   }
-  if (trans == 1) {
-   
+  if(atm.getAuthStatus()) {// authPass
+   do {
+    System.out.println("Please select your transaction: ");
+    System.out.println("[1]Withdrawal [2]Deposit [3]Transfer [4] Run Tests");
+    trans = input.nextInt();
+    switch(trans) {
+      case 1:
+        System.out.println("Withdraw amount: ");
+        int amount = input.nextInt();
+        atm.doAction(new Action(accountID, Command.withdraw, amount));
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+      case 4:
+        break;
+      default:
+        break;
+    }
+    if (trans == 1) {
+      
+    }
+    //System.out.println("Please enter the amount of withdrawal: ");
+    //if trans == 2, execute deposit
+    //System.out.println("Please enter the amount of deposit: ");
+    //if trans == 3, execute transfer
+    //System.out.println("Please enter the bank account number: ");
+    //System.out.println("Please enter the amount of transfer: ");
+    //System.out.println("Would you like to make another transaction? Type 'yes' if you want to continue, otherwise type 'exit'");
+   }while(!input.equals("exit"));
+  } else {
+    System.out.println("Auth failed");
   }
-  //System.out.println("Please enter the amount of withdrawal: ");
-  //if trans == 2, execute deposit
-  //System.out.println("Please enter the amount of deposit: ");
-  //if trans == 3, execute transfer
-  //System.out.println("Please enter the bank account number: ");
-  //System.out.println("Please enter the amount of transfer: ");
-  //System.out.println("Would you like to make another transaction? Type 'yes' if you want to continue, otherwise type 'exit'");
-  }while(!input.equals("exit"));
+ }
+
+ public static void main(String[] args) {
+  Main system = new Main();
+  system.run();
  }
 }
