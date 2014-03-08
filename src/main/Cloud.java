@@ -1,115 +1,80 @@
-import java.util.ArrayList;
-import java.util.List;
+public class Cloud extends Process implements Runnable {
+	private final int cloudId;
+	private Channel databaseChannel;
+	private Channel atmChannel;
 
-public class Cloud implements Runnable {
- private final int cloudId;
- private boolean isAuthenticated;
- private int balance;
- private Atm atm;
- private boolean receivedAtm;
- private boolean receivedDb;
- private boolean accountId;
- private Action action;
- private Command command;
- private static List<Cloud> clouds = new ArrayList<Cloud>();
- 
- private static Database database = new Database();
- {
-  database.initWithTestData();
-  new Thread(database).start();
- }
+	public Cloud(int cloudId) {
+		this.cloudId = cloudId;
+	}
+	
+	public void println(String s) {
+		System.out.println("Cloud[" + this.cloudId + "]: " + s);
+	}
 
- private Cloud(int cloudId, Atm atm) {
-  this.cloudId = cloudId;
-  this.atm = atm;
- }
+	public int getCloudId() {
+		return this.cloudId;
+	}
 
- public static Cloud allocateCloud(Atm atm) {
-  Cloud cloud = new Cloud(clouds.size(), atm);
-  clouds.add(cloud);
-  new Thread(cloud).start();
-  return cloud;
- }
+	public void connectToDatabase(Channel channel) {
+		databaseChannel = channel;
+	}
 
- public static Cloud getCloud(int cloudId) {
-  return clouds.get(cloudId);
- }
+	public void connectToAtm(Channel channel) {
+		atmChannel = channel;
+	}
 
- public Action getAction() {
-  return action;
- }
- 
- public boolean getAuthStatus() {
-   return this.isAuthenticated;
- }
- 
- public int getBalance() {
-   return this.balance;
- }
- 
- public int getCloudId() {
-   return this.cloudId;
- }
-
- @Override
- public void run() {
-  while (true) {
-   try {
-    synchronized (this) {
-     while (!receivedAtm) {
-      wait(Channel.timeout); // for atm
-     }
-     receivedAtm = false;
-     Action action = atm.getAction();
-     int accountId = action.getSrcAccountId();
-     database.query(new Query(cloudId, Command.retrieve,
-       accountId));
-     while (!receivedDb) {
-      wait(Channel.timeout); // for database
-     }
-     receivedDb = false;
-     BankAccount bankAccount = database.retrieveResult(cloudId);
-     switch (action.getCommand()) {
-     case withdraw:
-      balance = bankAccount.getBalance() - action.getAmount();
-      break;
-     case deposit:
-      balance = bankAccount.getBalance() + action.getAmount();
-      break;
-     case authenticate:
-      this.isAuthenticated = bankAccount.getPassword() == action.getPassword();
-      break;
-     case transfer:
-      balance = bankAccount.getBalance() - action.getAmount();
-      database.query(new Query(cloudId, Command.retrieve, action.getDestAccountId()));
-      while (!receivedDb) {
-       wait(); // for database
-      }
-      BankAccount destBankAccount = database.retrieveResult(cloudId);
-      int destBalance = bankAccount.getBalance() + action.getAmount();
-      destBankAccount = new BankAccount(bankAccount.getAccountId(), bankAccount.getPassword(), destBalance);
-      database.query(new Query(cloudId, Command.update, destBankAccount.getAccountId(), destBankAccount));
-      break;
-      default:
-       System.err.println("Command not valid");
-     }
-     bankAccount = new BankAccount(
-       bankAccount.getAccountId(),
-       bankAccount.getPassword(), balance);
-     database.query(new Query(cloudId, Command.update, bankAccount.getAccountId(), bankAccount));
-    }
-    synchronized (this) {
-     while (!receivedDb) {
-      wait(Channel.timeout); // for database
-     }
-    }    
-    synchronized (atm) {
-     atm.notify();
-    }
-   } catch (InterruptedException e) {
-
-   }
-  }
- }
-
+	@Override
+	public void run() {
+		while (true) {
+			try {
+				synchronized (this) {
+					this.response = null;
+					while (this.response == null) {
+						wait(Channel.timeout); // for atm
+					}
+					Action action = (Action) this.response;
+					int accountId = action.getSrcAccountId();
+					this.response = null;
+					while (this.response == null) {
+						databaseChannel.send(new Query(cloudId,Command.retrieve, accountId), this);
+						this.wait(Channel.timeout);
+					}
+					BankAccount bankAccount = (BankAccount) this.response;
+					this.println("Cloud received a response");
+					int balance = bankAccount.getBalance();
+					switch (action.getCommand()) {
+					case withdraw:
+						balance = bankAccount.getBalance() - action.getAmount();
+						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
+						atmChannel.send(balance, this);
+						break;
+					case deposit:
+						balance = bankAccount.getBalance() + action.getAmount();
+						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
+						atmChannel.send(balance, this);
+						break;
+					case authenticate:
+						boolean isAuthenticated = bankAccount.getPassword() == action.getPassword();
+						databaseChannel.send(isAuthenticated, this);
+						atmChannel.send(isAuthenticated, this);
+						break;
+					case transfer:
+						balance = bankAccount.getBalance() - action.getAmount();
+						databaseChannel.send(new Query(cloudId, Command.retrieve, action.getDestAccountId()), this);
+						BankAccount destBankAccount = (BankAccount) this.response;
+						int destBalance = bankAccount.getBalance() + action.getAmount();
+						destBankAccount = new BankAccount(bankAccount.getAccountId(), bankAccount.getPassword(), destBalance);
+						databaseChannel.send(new Query(cloudId, Command.update, destBankAccount.getAccountId(), destBankAccount), this);
+						break;
+					default:
+						System.err.println("Command not valid");
+					}
+					bankAccount = new BankAccount(bankAccount.getAccountId(), bankAccount.getPassword(), balance);
+					databaseChannel.send(new Query(cloudId, Command.update, bankAccount.getAccountId(), bankAccount), this);
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 }
