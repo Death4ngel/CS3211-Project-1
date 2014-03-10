@@ -30,6 +30,7 @@ public class Cloud extends Process implements Runnable {
 				synchronized (this) {
 					this.response = null;
 					while (this.response == null) {
+						//this.println("Waiting for an action");
 						wait(Channel.timeout); // for atm
 					}
 					Action action = (Action) this.response;
@@ -43,6 +44,7 @@ public class Cloud extends Process implements Runnable {
 					int balance = -1;
 					switch (action.getCommand()) {
 					case withdraw:
+						System.out.println(this.response);
 						balance = (int) this.response - action.getAmount();
 						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
 						atmChannel.send(balance, this);
@@ -76,6 +78,7 @@ public class Cloud extends Process implements Runnable {
 					}
 					databaseChannel.send(new Query(cloudId, Command.update, accountId, balance), this);
 				}
+				this.println("Action completed");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

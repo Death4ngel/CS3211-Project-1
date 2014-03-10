@@ -36,6 +36,10 @@ public class Database extends Process implements Runnable {
 	public BankAccount retrieveResult(int id) {
 		return results.get(id);
 	}
+	
+	private void println(String s) {
+		System.out.println("Database: " + s);
+	}
 
 	@Override
 	public void run() {
@@ -43,14 +47,16 @@ public class Database extends Process implements Runnable {
 			try {
 				synchronized (this) {
 					while (queries.isEmpty()) {
-						wait(1000); // for something to do
+						//this.println("Waiting for query");
+						this.wait(1000); // for something to do
 					}
+					this.println("Query received");
 					ChannelQueryPair<Channel, Query> channelQueryPair = queries.poll();
 					Query query = channelQueryPair.getQuery();
 					Channel channelToReply = channelQueryPair.getChannel();
 					int accountId = query.getAccountId();
 					BankAccount bankAccount = bankAccounts.get(accountId);
-					if (isLocked.contains(accountId)) {
+					if (isLocked.contains(accountId) && query.getCommand() != Command.update) {
 						queries.offer(channelQueryPair);
 						continue;
 					}
@@ -71,6 +77,7 @@ public class Database extends Process implements Runnable {
 					default:
 						System.err.println("Command not valid");
 					}
+					this.println("Action done");
 				}
 			} catch (InterruptedException e) {
 

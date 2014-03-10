@@ -102,11 +102,13 @@ public class Atm extends Process implements Runnable {
 	}
 	
 	public synchronized void withdraw(int accountId, int amount) {
+		System.out.println("BLA BLA");
 		this.action = new Action(accountId, Command.withdraw, amount);
 		this.notify();
 	}
 	
 	public synchronized void deposit(int accountId, int amount) {
+		System.out.println("BLA BLA");
 		this.action = new Action(accountId, Command.deposit, amount);
 		this.notify();
 	}
@@ -123,6 +125,7 @@ public class Atm extends Process implements Runnable {
 				synchronized (this) {
 					this.action = null;
 					while (this.action == null) {
+						this.println("Waiting for an action");
 						this.wait();
 					}
 					this.send(this.action, cloudChannel);
@@ -134,7 +137,7 @@ public class Atm extends Process implements Runnable {
 						this.isAuthenticated = (boolean) this.response;
 						break;
 					default:
-						this.println("Transaction completed");
+						this.println(this.action.getCommand() + " completed");
 						int balance = (int) this.response;
 						this.println("Your balance is now: " + balance);
 						break;
