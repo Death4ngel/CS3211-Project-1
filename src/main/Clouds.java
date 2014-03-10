@@ -6,32 +6,49 @@ import java.util.Queue;
 public class Clouds {
 	private final List<Cloud> clouds;
 	private final Queue<Cloud> freeClouds;
+	private final Queue<Atm> waitAtm;
 
 	public Clouds(int N, Database database) {
 		this.clouds = new ArrayList<Cloud>(N);
 		this.freeClouds = new LinkedList<Cloud>();
-	  for (int i = 0; i < N; i++) {
-		  Cloud cloud = new Cloud(i);
-		  Channel channel = new Channel(cloud, database);
-		  cloud.connectToDatabase(channel);
-		  clouds.add(i, cloud);
-		  freeClouds.add(cloud);
-		  new Thread(cloud).start();
-	  }
-  }
+		this.waitAtm = new LinkedList<Atm>();
+		for (int i = 0; i < N; i++) {
+			Cloud cloud = new Cloud(i);
+			Channel channel = new Channel(cloud, database);
+			cloud.connectToDatabase(channel);
+			clouds.add(i, cloud);
+			freeClouds.add(cloud);
+			new Thread(cloud).start();
+		}
+	}
 
-	public int allocateCloud(Atm atm) {
-		Cloud cloud = freeClouds.poll();
+	public synchronized int allocateCloud(Atm atm) {
+		Cloud cloud;
+		this.waitAtm.add(atm);
+		while ((cloud = freeClouds.poll()) == null) {
+			try {
+				atm.println("no clouds available. waiting . . .");
+				this.wait(1000);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		atm = waitAtm.poll();
 		Channel channel = new Channel(atm, cloud);
 		atm.connectToCloud(channel);
 		cloud.connectToAtm(channel);
-		return cloud.getCloudId();
+		int cloudId = cloud.getCloudId();
+		atm.println("obtained Cloud: " + cloudId);
+		return cloudId;
 	}
 
-	public void deallocateCloud(int cloudId) {
-		freeClouds.offer(clouds.get(cloudId));
+	public synchronized void deallocateCloud(int cloudId) {
+		System.out.println("Cloud: " + cloudId + " deallocated");
+		Cloud cloud = clouds.get(cloudId);
+		cloud.disconnectToAtm();
+		freeClouds.offer(cloud);
 	}
-	
+
 	public Cloud getCloud(int cloudId) {
 		return clouds.get(cloudId);
 	}

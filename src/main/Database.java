@@ -11,15 +11,16 @@ public class Database extends Process implements Runnable {
 	private final Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
 
 
-	// locks bank account to prevent concurrent updatesn
-	private final Set<Integer> isLocked = new HashSet<Integer>();
+	// locks bank account to prevent concurrent updates
+	 private final Set<Integer> isLocked = new HashSet<Integer>();
 
 	public Database() {
 		this.initWithTestData();
 	}
 
 	@Override
-	public synchronized void receive(Object request, Channel channel) {
+	public synchronized void receive(Channel channel) {
+		Object request = channel.getResponse(this);
 		if (request instanceof Query) {
 			Query query = (Query) request;
 			queries.offer(new ChannelQueryPair<Channel, Query>(channel, query));
@@ -37,7 +38,11 @@ public class Database extends Process implements Runnable {
 		return results.get(id);
 	}
 	
-	private void println(String s) {
+	public void insert(BankAccount bankAccount) {
+		bankAccounts.put(bankAccount.getAccountId(), bankAccount);
+	}
+	
+	public void println(String s) {
 		System.out.println("Database: " + s);
 	}
 
@@ -47,7 +52,7 @@ public class Database extends Process implements Runnable {
 			try {
 				synchronized (this) {
 					while (queries.isEmpty()) {
-						//this.println("Waiting for query");
+						this.println("Waiting for query");
 						this.wait(1000); // for something to do
 					}
 					this.println("Query received");
@@ -58,26 +63,27 @@ public class Database extends Process implements Runnable {
 					BankAccount bankAccount = bankAccounts.get(accountId);
 					if (isLocked.contains(accountId) && query.getCommand() != Command.update) {
 						queries.offer(channelQueryPair);
+						wait(1000);
 						continue;
 					}
 					switch (query.getCommand()) {
 					case authenticate:
-						System.out.println("Database sending back reply to query..");
+						this.println("sending password to query..");
 						channelToReply.send(bankAccount.getPassword(), this);
 					case retrieve:
-						System.out.println("Database sending back reply to query..");
+						this.println("sending balance to query..");
 						isLocked.add(accountId);
 						channelToReply.send(bankAccount.getBalance(), this);
 						break;
 					case update:
-						System.out.println("Database updated bankAccount");
+						this.println("updated bankAccount");
 						bankAccounts.put(accountId, new BankAccount(accountId, bankAccount.getPassword(), query.getArg()));
 						isLocked.remove(accountId);
 						break;
 					default:
 						System.err.println("Command not valid");
 					}
-					this.println("Action done");
+					this.println("query done");
 				}
 			} catch (InterruptedException e) {
 

@@ -65,6 +65,7 @@ public class Atm extends Process implements Runnable {
 					System.out.println("Auth failed");
 				}
 				clouds.deallocateCloud(cloudId);
+				cloudChannel = null;
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -77,6 +78,7 @@ public class Atm extends Process implements Runnable {
 	private boolean isAuthenticated = false;
 	private Action action;
 	private Channel cloudChannel;
+	private boolean isDone;
 
 	public Atm(int atmId, Clouds clouds) {
 		this.atmId = atmId;
@@ -102,20 +104,32 @@ public class Atm extends Process implements Runnable {
 	}
 	
 	public synchronized void withdraw(int accountId, int amount) {
-		System.out.println("BLA BLA");
+		this.waitDone();
 		this.action = new Action(accountId, Command.withdraw, amount);
 		this.notify();
 	}
 	
 	public synchronized void deposit(int accountId, int amount) {
-		System.out.println("BLA BLA");
+		this.waitDone();
 		this.action = new Action(accountId, Command.deposit, amount);
 		this.notify();
 	}
 	
 	public synchronized void transfer(int accountId, int amount, int destAccountId) {
+		this.waitDone();
 		this.action = new Action(accountId, Command.transfer, amount, destAccountId);
 		this.notify();
+	}
+	
+	// waits for atm to be done
+	private synchronized void waitDone() {
+		try {
+			while (!isDone) {
+				this.wait(1000);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -123,22 +137,24 @@ public class Atm extends Process implements Runnable {
 		try {
 			while (true) {
 				synchronized (this) {
+					this.isDone = true;
 					this.action = null;
 					while (this.action == null) {
-						this.println("Waiting for an action");
+						this.println("waiting for an action");
 						this.wait();
 					}
+					this.isDone = false;
 					this.send(this.action, cloudChannel);
 					// output messages based on choice of action.
 					this.println("Cloud notified");
 					switch (this.action.getCommand()) {
 					case authenticate:
 						this.println("Auth status received");
-						this.isAuthenticated = (boolean) this.response;
+						this.isAuthenticated = (boolean) cloudChannel.getResponse(this);
 						break;
 					default:
 						this.println(this.action.getCommand() + " completed");
-						int balance = (int) this.response;
+						int balance = (int) cloudChannel.getResponse(this);
 						this.println("Your balance is now: " + balance);
 						break;
 					}
@@ -148,6 +164,12 @@ public class Atm extends Process implements Runnable {
 				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return "Atm: " + this.atmId;
 	}
 }

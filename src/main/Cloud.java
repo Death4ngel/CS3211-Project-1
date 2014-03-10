@@ -18,9 +18,13 @@ public class Cloud extends Process implements Runnable {
 	public void connectToDatabase(Channel channel) {
 		databaseChannel = channel;
 	}
-
+	
 	public void connectToAtm(Channel channel) {
 		atmChannel = channel;
+	}
+	
+	public void disconnectToAtm() {
+		this.atmChannel = null;
 	}
 
 	@Override
@@ -28,49 +32,47 @@ public class Cloud extends Process implements Runnable {
 		while (true) {
 			try {
 				synchronized (this) {
-					this.response = null;
-					while (this.response == null) {
-						//this.println("Waiting for an action");
-						wait(Channel.timeout); // for atm
+					while (atmChannel == null) {
+						// wait to be allocated
+						this.wait(1000);
 					}
-					Action action = (Action) this.response;
+					while(atmChannel.getResponse(this) == null) {
+						//this.println("Waiting for an action");
+						wait(1000); // for atm
+					}
+					this.println("received an action");
+					Action action = (Action) atmChannel.getResponse(this);
 					int accountId = action.getSrcAccountId();
-					this.response = null;
-					while (this.response == null) {
+					while (databaseChannel.getResponse(this) == null) {
 						databaseChannel.send(new Query(cloudId,Command.retrieve, accountId), this);
 						this.wait(Channel.timeout);
 					}
-					this.println("Cloud received a response");
+					this.println("received a balance");
 					int balance = -1;
+					int response = (int) databaseChannel.getResponse(this);
+					int amount = action.getAmount();
 					switch (action.getCommand()) {
 					case withdraw:
-						System.out.println(this.response);
-						balance = (int) this.response - action.getAmount();
-						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
+						balance = response - amount;
 						atmChannel.send(balance, this);
 						break;
 					case deposit:
-						int amount = action.getAmount();
-						System.out.println(this.response);
-						int bla = (int) this.response;
-						balance = bla + amount;
-						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
+						balance = response + amount;
 						atmChannel.send(balance, this);
 						break;
 					case authenticate:
-						boolean isAuthenticated = (int) this.response == action.getPassword();
-						//databaseChannel.send(isAuthenticated, this);
+						boolean isAuthenticated = response == action.getPassword();
 						atmChannel.send(isAuthenticated, this);
 						break;
 					case transfer:
-						balance = (int) this.response - action.getAmount();
-						this.response = null;
+						balance = response - amount;
+						atmChannel.send(balance, this);
 						int destAccountId = action.getDestAccountId();
-						while (this.response == null) {
+						while (databaseChannel.getResponse(this) == null) {
 							databaseChannel.send(new Query(cloudId, Command.retrieve, destAccountId), this);
 							this.wait(Channel.timeout);
 						}
-						int destBalance = (int) this.response + action.getAmount();
+						int destBalance = (int) databaseChannel.getResponse(this) + amount;
 						databaseChannel.send(new Query(cloudId, Command.update, destAccountId, destBalance), this);
 						break;
 					default:
@@ -78,7 +80,7 @@ public class Cloud extends Process implements Runnable {
 					}
 					databaseChannel.send(new Query(cloudId, Command.update, accountId, balance), this);
 				}
-				this.println("Action completed");
+				this.println("action completed");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

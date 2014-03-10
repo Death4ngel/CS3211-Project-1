@@ -1,12 +1,10 @@
 public abstract class Process {
 	// make list of channels and make it like how cloud assign
-	protected Object response;
 
 	// sends data repeatedly until a response is received
 	public synchronized void send(Object data, Channel channel) {
 		try {
-			this.response = null;
-			while (this.response == null) {
+			while (channel.getResponse(this) == null) {
 				channel.send(data, this);
 				this.wait(Channel.timeout);
 			}
@@ -15,10 +13,10 @@ public abstract class Process {
 
 		}
 	}
-
-	public synchronized void receive(Object response, Channel channel) {
-		this.response = response;
+	
+	public synchronized void receive(Channel channel) {
 		this.notify();
 	}
-
+	
+	public abstract void println(String s);
 }
