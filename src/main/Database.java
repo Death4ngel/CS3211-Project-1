@@ -2,11 +2,17 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
+import java.util.HashSet;
 
 public class Database extends Process implements Runnable {
-	private Queue<ChannelQueryPair<Channel, Query>> queries = new LinkedList<ChannelQueryPair<Channel, Query>>();
-	private Map<Integer, BankAccount> results = new HashMap<Integer, BankAccount>();
-	private Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
+	private final Queue<ChannelQueryPair<Channel, Query>> queries = new LinkedList<ChannelQueryPair<Channel, Query>>();
+	private final Map<Integer, BankAccount> results = new HashMap<Integer, BankAccount>();
+	private final Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
+
+
+	// locks bank account to prevent concurrent updatesn
+	private final Set<Integer> isLocked = new HashSet<Integer>();
 
 	public Database() {
 		this.initWithTestData();
@@ -17,8 +23,8 @@ public class Database extends Process implements Runnable {
 		if (request instanceof Query) {
 			Query query = (Query) request;
 			queries.offer(new ChannelQueryPair<Channel, Query>(channel, query));
+			this.notify();
 		}
-		this.notify();
 	}
 
 	private void initWithTestData() {
@@ -37,20 +43,30 @@ public class Database extends Process implements Runnable {
 			try {
 				synchronized (this) {
 					while (queries.isEmpty()) {
-						wait(); // for something to do
+						wait(1000); // for something to do
 					}
 					ChannelQueryPair<Channel, Query> channelQueryPair = queries.poll();
 					Query query = channelQueryPair.getQuery();
 					Channel channelToReply = channelQueryPair.getChannel();
 					int accountId = query.getAccountId();
+					BankAccount bankAccount = bankAccounts.get(accountId);
+					if (isLocked.contains(accountId)) {
+						queries.offer(channelQueryPair);
+						continue;
+					}
 					switch (query.getCommand()) {
+					case authenticate:
+						System.out.println("Database sending back reply to query..");
+						channelToReply.send(bankAccount.getPassword(), this);
 					case retrieve:
 						System.out.println("Database sending back reply to query..");
-						channelToReply.send(bankAccounts.get(accountId), this);
+						isLocked.add(accountId);
+						channelToReply.send(bankAccount.getBalance(), this);
 						break;
 					case update:
 						System.out.println("Database updated bankAccount");
-						bankAccounts.put(accountId, query.getBankAccount());
+						bankAccounts.put(accountId, new BankAccount(accountId, bankAccount.getPassword(), query.getArg()));
+						isLocked.remove(accountId);
 						break;
 					default:
 						System.err.println("Command not valid");

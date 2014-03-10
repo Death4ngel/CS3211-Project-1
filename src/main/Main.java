@@ -8,12 +8,18 @@ public class Main {
 
 		Atm atm = atms.getAtm(0);
 		Atm atm2 = atms.getAtm(1);
-		atm.start();
-		/*clouds.allocateCloud(atm);
+		//atm.start();
+		try {
+		clouds.allocateCloud(atm);
 		clouds.allocateCloud(atm2);
 		atm.deposit(10001, 1000);
+		Thread.sleep(1000);
 		atm.deposit(10001, 1000);
-		atm.deposit(10001, 1000);*/
+		Thread.sleep(1000);
+		atm.deposit(10001, 1000);
 		//atm2.withdraw(10001, 1000);
+		} catch (Exception e) {
+			
+		}
 	}
 }

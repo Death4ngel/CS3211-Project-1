@@ -1,7 +1,7 @@
 import java.util.Random;
 
 public class Channel {
-	public static final int timeout = 10000;
+	public static final int timeout = 1000;
 	private static final double P = 0.5;
 	private static final Random rand = new Random();
 

@@ -1,9 +1,9 @@
 
 public class Query {
-	private int cloudId;
-	private Command command;
-	private int accountId;
-	private BankAccount bankAccount;
+	private final int cloudId;
+	private final Command command;
+	private final int accountId;
+	private int arg;
 	
 	public Query(int cloudId, Command command, int accountId) {
 		this.cloudId = cloudId;
@@ -11,24 +11,24 @@ public class Query {
 		this.accountId = accountId;
 	}
 	
-	public Query(int cloudId, Command command, int accountId, BankAccount bankAccount) {
+	public Query(int cloudId, Command command, int accountId, int arg) {
 		this(cloudId, command, accountId);
-		this.bankAccount = bankAccount;
+		this.arg = arg;
 	}
 	
 	public int getCloudId() {
-		return cloudId;
+		return this.cloudId;
 	}
 	
 	public Command getCommand() {
-		return command;
+		return this.command;
 	}
 	
 	public int getAccountId() {
-		return accountId;
+		return this.accountId;
 	}
 	
-	public BankAccount getBankAccount() {
-		return bankAccount;
+	public int getArg() {
+		return this.arg;
 	}
 }

@@ -39,38 +39,42 @@ public class Cloud extends Process implements Runnable {
 						databaseChannel.send(new Query(cloudId,Command.retrieve, accountId), this);
 						this.wait(Channel.timeout);
 					}
-					BankAccount bankAccount = (BankAccount) this.response;
 					this.println("Cloud received a response");
-					int balance = bankAccount.getBalance();
+					int balance = -1;
 					switch (action.getCommand()) {
 					case withdraw:
-						balance = bankAccount.getBalance() - action.getAmount();
+						balance = (int) this.response - action.getAmount();
 						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
 						atmChannel.send(balance, this);
 						break;
 					case deposit:
-						balance = bankAccount.getBalance() + action.getAmount();
+						int amount = action.getAmount();
+						System.out.println(this.response);
+						int bla = (int) this.response;
+						balance = bla + amount;
 						//databaseChannel.send(new Query(cloudId, Command.update, accountId), this);
 						atmChannel.send(balance, this);
 						break;
 					case authenticate:
-						boolean isAuthenticated = bankAccount.getPassword() == action.getPassword();
-						databaseChannel.send(isAuthenticated, this);
+						boolean isAuthenticated = (int) this.response == action.getPassword();
+						//databaseChannel.send(isAuthenticated, this);
 						atmChannel.send(isAuthenticated, this);
 						break;
 					case transfer:
-						balance = bankAccount.getBalance() - action.getAmount();
-						databaseChannel.send(new Query(cloudId, Command.retrieve, action.getDestAccountId()), this);
-						BankAccount destBankAccount = (BankAccount) this.response;
-						int destBalance = bankAccount.getBalance() + action.getAmount();
-						destBankAccount = new BankAccount(bankAccount.getAccountId(), bankAccount.getPassword(), destBalance);
-						databaseChannel.send(new Query(cloudId, Command.update, destBankAccount.getAccountId(), destBankAccount), this);
+						balance = (int) this.response - action.getAmount();
+						this.response = null;
+						int destAccountId = action.getDestAccountId();
+						while (this.response == null) {
+							databaseChannel.send(new Query(cloudId, Command.retrieve, destAccountId), this);
+							this.wait(Channel.timeout);
+						}
+						int destBalance = (int) this.response + action.getAmount();
+						databaseChannel.send(new Query(cloudId, Command.update, destAccountId, destBalance), this);
 						break;
 					default:
 						System.err.println("Command not valid");
 					}
-					bankAccount = new BankAccount(bankAccount.getAccountId(), bankAccount.getPassword(), balance);
-					databaseChannel.send(new Query(cloudId, Command.update, bankAccount.getAccountId(), bankAccount), this);
+					databaseChannel.send(new Query(cloudId, Command.update, accountId, balance), this);
 				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
