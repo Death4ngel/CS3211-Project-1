@@ -22,18 +22,18 @@ public class Clouds {
 		}
 	}
 
-	public synchronized int allocateCloud(Atm atm) {
+	public synchronized int allocateCloud(final Atm reqAtm) {
 		Cloud cloud;
-		this.waitAtm.add(atm);
+		this.waitAtm.add(reqAtm);
 		while ((cloud = freeClouds.poll()) == null) {
 			try {
-				atm.println("no clouds available. waiting . . .");
+				reqAtm.println("no clouds available. waiting . . .");
 				this.wait(1000);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
-		atm = waitAtm.poll();
+		final Atm atm = waitAtm.poll();
 		Channel channel = new Channel(atm, cloud);
 		atm.connectToCloud(channel);
 		cloud.connectToAtm(channel);
