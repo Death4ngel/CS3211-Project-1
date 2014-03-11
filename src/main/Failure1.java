@@ -28,7 +28,7 @@ public class Failure1 {
 	
 	public static void main(String[] args) {
 		final Database database = new Database();
-		final Clouds clouds = new Clouds(1, database);
+		final Clouds clouds = new CloudsWrong(1, database);
 		final Atms atms = new Atms(2, clouds);
 		new Thread(database).start();
 

@@ -5,7 +5,7 @@ import java.util.Queue;
 
 public class Clouds {
 	private final List<Cloud> clouds;
-	private final Queue<Cloud> freeClouds;
+	protected final Queue<Cloud> freeClouds;
 	private final Queue<Atm> waitAtm;
 
 	public Clouds(int N, Database database) {

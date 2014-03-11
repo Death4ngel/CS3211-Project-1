@@ -17,7 +17,7 @@ public class IncorrectCalc {
 	 * Atm[1]: Your balance is now: 900 
 	 */
 	public static void main(String[] args) {
-		final Database database = new Database();
+		final Database database = new DatabaseWrong();
 		final Clouds clouds = new Clouds(2, database);
 		final Atms atms = new Atms(2, clouds);
 		new Thread(database).start();

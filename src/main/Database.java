@@ -6,9 +6,9 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class Database extends Process implements Runnable {
-	private final Queue<ChannelQueryPair<Channel, Query>> queries = new LinkedList<ChannelQueryPair<Channel, Query>>();
+	protected final Queue<ChannelQueryPair<Channel, Query>> queries = new LinkedList<ChannelQueryPair<Channel, Query>>();
 	private final Map<Integer, BankAccount> results = new HashMap<Integer, BankAccount>();
-	private final Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
+	protected final Map<Integer, BankAccount> bankAccounts = new HashMap<Integer, BankAccount>();
 
 
 	// locks bank account to prevent concurrent updates
